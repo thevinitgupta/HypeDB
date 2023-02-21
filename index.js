@@ -5,9 +5,8 @@ require('dotenv').config();
 
 const PORT = process.env.NODE_PORT;
 
-app.get("/",(req,res)=>{
-    res.send("Welcome to HypeDB")
-});
+const ops = require('./operations/index.js');
+app.use('/',ops);
 
 app.listen(PORT, ()=>{
     console.log(`Server started on port : ${PORT}`)
