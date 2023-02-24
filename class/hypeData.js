@@ -1,8 +1,8 @@
 const fs = require("fs");
 const {v4 : uuidv4, uuidValidateV4} = require("uuid")
 class HypeData{
-    constructor(dbName){
-        this.databaseName = dbName;
+    constructor(_dbName){
+        this.databaseName = _dbName;
         this.databasePath = `../data/${this.databaseName}.json`;
 
         //create an empty file
@@ -32,19 +32,48 @@ class HypeData{
         return data[_id];
     }
 
-    create(data){
-        const _id = this._generateId();
-
+    create(_data){
+        const id = this._generateId();
+        this._addNewField(id,_data);
     }
 
-
+    update(_id, _data){
+        if(!_id){
+            const err = new Error('ID empty');
+            err.code = 400;
+            return this._handleData(err, null);
+        }
+        if(_id && (!_uuidValidateV4(_id))){
+            const err = new Error('Invalid ID');
+            err.code = 400;
+            return this._handleData(err,null);
+        }
+        if(!_data){
+            const err = new Error('Data empty');
+            err.code = 400;
+            return this._handleData(err, null);
+        }
+        
+    }
 
     //private functions
-    _addNewField(_id, _obj){
+    _addNewField(_id, _data){
+        const newDoc = {};
+        newDoc[_id] = _data;
+        const newDocJson = JSON.stringify(newDocJson);
 
+        const writeStream = fs.createWriteStream(this.databasePath, {flags : 'a'});
+
+        writeStream.write(`,${newDocJson}`,(error) =>{
+            if(error){
+                return this._handleData(error, null);
+            }
+            return this._handleData(null, newDoc);
+        })
+        writeStream.end('');
     }
 
-    async _readDatabaseFile(){
+    _readDatabaseFile(){
         const readStream = fs.createReadStream(this.databasePath, { encoding: 'utf8' });
         const data = "";
         readStream.on('error',(error) =>{
@@ -55,9 +84,9 @@ class HypeData{
             data += chunk;
         })
 
-        readStream.on('end',()=>{
+        readStream.on('end',async ()=>{
             try {
-                const jsonData = JSON.parse(data);
+                const jsonData = await JSON.parse(data);
                 return this._handleData(null, jsonData);
             }
             catch(error){
@@ -70,8 +99,8 @@ class HypeData{
         return uuidv4();
     }
 
-    _uuidValidateV4(uuid) {
-        return uuidValidateV4(uuid);
+    _uuidValidateV4(_uuid) {
+        return uuidValidateV4(_uuid);
     }
 
     _handleData(error, data){
