@@ -1,13 +1,25 @@
 const fs = require("fs");
 const {v4 : uuidv4, uuidValidateV4} = require("uuid")
+const {Transform} = require("stream");
 class HypeData{
     constructor(_dbName){
         this.databaseName = _dbName;
-        this.databasePath = `../data/${this.databaseName}.json`;
+        this.databasePath = `./data/${this.databaseName}.json`;
 
-        //create an empty file
-        if(!fs.existsSync(this.databasePath)){
-            fs.writeFileSync(this.databasePath,JSON.stringify({}));
+        try{
+            //create an empty file
+            if(fs.existsSync(this.databasePath)==false){
+                fs.writeFileSync(this.databasePath,JSON.stringify({}), {flag : 'wx'});
+            }
+            this.data = {}
+            return this._handleData(null, {
+                code : 200,
+                data : {},
+                message : 'Database Created'
+            })
+        }
+        catch(error){
+            return this._handleData(error, null);
         }
     }
 
@@ -73,6 +85,15 @@ class HypeData{
         writeStream.end('');
     }
 
+    _transform(action, _id, data){
+        const transformStream = new Transform({
+            writableObjectMode : true,
+            transform(chunk, encoding, callback) {
+                
+            }
+        })
+    }
+
     _readDatabaseFile(){
         const readStream = fs.createReadStream(this.databasePath, { encoding: 'utf8' });
         const data = "";
@@ -119,3 +140,5 @@ class HypeData{
           }
     }
 }
+
+module.exports = HypeData;
