@@ -1,5 +1,5 @@
 const fs = require("fs");
-const {v4 : uuidv4, uuidValidateV4} = require("uuid")
+const {v4 : uuidv4, version : uuidVersion , validate : uuidValidate } = require("uuid")
 const {Transform} = require("stream");
 class HypeData{
     constructor(_dbName){
@@ -12,11 +12,11 @@ class HypeData{
                 fs.writeFileSync(this.databasePath,JSON.stringify({}), {flag : 'wx'});
             }
             this.data = {}
-            return this._handleData(null, {
-                code : 200,
-                data : {},
-                message : 'Database Created'
-            })
+            // return this._handleData(null, {
+            //     code : 200,
+            //     data : {},
+            //     message : 'Database Created'
+            // })
         }
         catch(error){
             return this._handleData(error, null);
@@ -55,7 +55,7 @@ class HypeData{
             err.code = 400;
             return this._handleData(err, null);
         }
-        if(_id && (!_uuidValidateV4(_id))){
+        if(_id && (!this._uuidValidateV4(_id))){
             const err = new Error('Invalid ID');
             err.code = 400;
             return this._handleData(err,null);
@@ -65,15 +65,39 @@ class HypeData{
             err.code = 400;
             return this._handleData(err, null);
         }
-        
+
+        const readStream = fs.createReadStream(this.databasePath);
+
+        const transformStream = this._transform('UPDATE', _id, _data);
+
+        const writeStream = fs.createWriteStream(this.databasePath);
+
+        readStream
+        .pipe(transformStream)
+        .pipe(writeStream)
+        .on('error', err => this._handleData(err, null))
+        .on('finish', () => this._handleData(null, data));
     }
 
     //private functions
     _addNewField(_id, _data){
-        const newDoc = {};
-        newDoc[_id] = _data;
-        const newDocJson = JSON.stringify(newDocJson);
+        // const readStream = fs.createReadStream(this.databasePath);
 
+        // const transformStream = this._transform('CREATE', _id, _data);
+
+        // const writeStream = fs.createWriteStream(this.databasePath);
+
+        // readStream
+        // .pipe(transformStream)
+        // .pipe(writeStream)
+        // .on('error', err => this._handleData(err, null))
+        // .on('finish', () => this._handleData(null, data));
+        const newDoc = {..._data};
+        const newDocJson = JSON.stringify(newDoc);
+        console.log(this.databasePath)
+        const dbData = this._readDatabaseFile();
+
+        dbData[_id] = newDocJson;
         const writeStream = fs.createWriteStream(this.databasePath, {flags : 'a'});
 
         writeStream.write(`,${newDocJson}`,(error) =>{
@@ -86,12 +110,35 @@ class HypeData{
     }
 
     _transform(action, _id, data){
+        const encoding = 'utf8';
         const transformStream = new Transform({
-            writableObjectMode : true,
+            objectMode : true,
             transform(chunk, encoding, callback) {
-                
+                let updatedChunk;
+                try {
+                    const parsedChunk = JSON.parse(chunk);
+                    console.log(parsedChunk);
+                    if(action === 'CREATE'){
+                        console.log("CREATE");
+                    }
+                    if(action === 'DELETE') {
+                        delete parsedChunk[_id];
+                    }
+                    else if(action === 'UPDATE') {
+                        parsedChunk[_id] = data;
+                    }
+                    updatedChunk = JSON.stringify(parsedChunk);
+                }
+                catch(error){
+                    return this._handleData(error,null);
+                }
+                callback(null,updatedChunk);
+            },
+            flush() {
+                console.log('flush');
             }
         })
+        return transformStream;
     }
 
     _readDatabaseFile(){
@@ -102,6 +149,7 @@ class HypeData{
         })
 
         readStream.on('data', (chunk)=>{
+            console.log(chunk);
             data += chunk;
         })
 
@@ -121,7 +169,7 @@ class HypeData{
     }
 
     _uuidValidateV4(_uuid) {
-        return uuidValidateV4(_uuid);
+        return uuidValidate(_uuid) && uuidVersion(_uuid) === 4;;
     }
 
     _handleData(error, data){

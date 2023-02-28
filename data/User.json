@@ -1,1 +1,22 @@
-{}
+{
+    "1" : {
+        "name" : "Vinit Gupta",
+        "email" : "vinitman35@gmail.com",
+        "age" : 21
+    },
+    "2" : {
+        "name" : "Vinit Gupta",
+        "email" : "vinitman35@gmail.com",
+        "age" : 21
+    },
+    "3" : {
+        "name" : "Vinit Gupta",
+        "email" : "vinitman35@gmail.com",
+        "age" : 21
+    },
+    "4" : {
+        "name" : "Vinit Gupta",
+        "email" : "vinitman35@gmail.com",
+        "age" : 21
+    }
+}

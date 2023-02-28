@@ -9,7 +9,12 @@ const PORT = process.env.NODE_PORT;
 app.use(express.json())
 
 app.param('db', (req, res, next, name) => {
-    req.driver = new HypeData(name);
+    const db = new HypeData(name);
+    db.update(3,{
+        name : 'Vinit Gupta',
+        email : "thevinitgupta@gmail.com",
+        age : 22
+    });
     next();
   });
 
@@ -17,7 +22,11 @@ const ops = require('./operations/index.js');
 
 //* Example : localhost:3000/User -> creates a User.json file
 app.use('/:db',(req,res) =>{
-    res.send(req.driver);
+    res.json({
+        status : 200,
+        data : [],
+        message : 'User created successfully'
+    });
 });
 
 
