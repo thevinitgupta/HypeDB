@@ -10,11 +10,8 @@ app.use(express.json())
 
 app.param('db', (req, res, next, name) => {
     const db = new HypeData(name);
-    db.update(3,{
-        name : 'Vinit Gupta',
-        email : "thevinitgupta@gmail.com",
-        age : 22
-    });
+    // db.update('9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', {"age": 22});
+    res.send(db.getAll());
     next();
   });
 
@@ -22,11 +19,11 @@ const ops = require('./operations/index.js');
 
 //* Example : localhost:3000/User -> creates a User.json file
 app.use('/:db',(req,res) =>{
-    res.json({
-        status : 200,
-        data : [],
-        message : 'User created successfully'
-    });
+    // res.json({
+    //     status : 200,
+    //     data : [],
+    //     message : 'User created successfully'
+    // });
 });
 
 
