@@ -25,7 +25,7 @@ class HypeData{
   }
   
   getAll(){
-    return this.data;
+    return this._handleData(null,this.data);
   }
 
   get(_key, _value = null){
@@ -33,11 +33,34 @@ class HypeData{
       return this._handleData({
         code : 400,
         message : "Key not found"
-      }, null)
+      }, null);
     }
-    if(_key==="_id"){
+    if(!_value){
+      return this._handleData({
+        code : 400,
+        message : "Value not found"
+      }, null);
+    }
+    if(_key==="_id" && !this._uuidValidateV4(_value)){
+      return this._handleData({
+        code : 400,
+        message : "Invalid Key"
+      })
+    }
+    if(_value===""){
+      return this.get();
+    }
 
-    }
+    return this._handleData(null,this._searchByField(_key, _value));
+  }
+
+  create(_object){
+    const _id = this._generateId();
+    _object._id = _id;
+
+    this.data.push(_object);
+    this.updatedData.push(_object);
+    return this._handleData(null, _object);
   }
 
   _generateId(){
@@ -79,7 +102,7 @@ class HypeData{
   _searchByField(_field, _value){
     let searchData = [];
     this.data.forEach((item) =>{
-      if(item._field && (_value==null || item[_field]===_value)){
+      if(item[_field] && (_value!=null || item[_field]===_value)){
         searchData.push(item);
       }
     });
