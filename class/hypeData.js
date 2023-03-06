@@ -1,6 +1,7 @@
 const fs = require("fs");
 const {v4 : uuidv4, version : uuidVersion , validate : uuidValidate } = require("uuid")
 const {Transform} = require("stream");
+const tmp = require("tmp")
 class HypeData{ 
   constructor(_dbName){
       this.databaseName = _dbName;
@@ -54,37 +55,40 @@ class HypeData{
     return this._handleData(null,this._searchByField(_key, _value));
   }
 
-  create(newUser){
+  create(_object){
     const _id = this._generateId();
-    newUser._id = _id;
+    _object._id = _id;
 
-    this.data.push(newUser);
-    this.updatedData.push(newUser);
+    this.data.push(_object);
+    this.updatedData.push(_object);
 
     // TODO write the object to the file
     const filePath = this.databasePath;
     try{
       const readStream = fs.createReadStream(filePath);
-      const writeStream = fs.createWriteStream("./data/User2.json");
-    
-      // const updateStream = ;
-    
+      const tmpFile = tmp.fileSync({postfix : ".json"});
+      const writeStream = fs.createWriteStream(tmpFile.name);
+          
       readStream
       .pipe(
         new Transform({
           transform(chunk, encoding, callback) {
             let cData = JSON.parse(chunk);
-            console.log("CData : ");
-            cData.data.forEach((d)=> {console.log(JSON.stringify(d))})
-            cData.data.push(newUser);
+            cData.data.push(_object);
             console.log(">>>>> chunk : ",chunk.toString());
-            // this.push(JSON.stringify(data));
             callback(null, JSON.stringify(cData));
           },
         })
       )
-      .pipe(writeStream);
-      return this._handleData(null, newUser);
+      .pipe(writeStream)
+      .on('finish', () =>{
+        return fs.copyFile(tmpFile.name, filePath, (err) =>{
+          if(err) {
+            throw err;
+          }
+        })
+      });
+      return this._handleData(null, _object); 
     }
     catch(error){
       return this._handleData(error, null);
@@ -98,11 +102,6 @@ class HypeData{
 
   _uuidValidateV4(_uuid) {
       return uuidValidate(_uuid) && uuidVersion(_uuid)===4;
-  }
-
-  _createAddStream(_obj){
-    
-    return transform;
   }
 
   _createUpdateStream(_id, _field, _value){
