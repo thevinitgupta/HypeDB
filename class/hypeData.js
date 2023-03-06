@@ -54,13 +54,42 @@ class HypeData{
     return this._handleData(null,this._searchByField(_key, _value));
   }
 
-  create(_object){
+  create(newUser){
     const _id = this._generateId();
-    _object._id = _id;
+    newUser._id = _id;
 
-    this.data.push(_object);
-    this.updatedData.push(_object);
-    return this._handleData(null, _object);
+    this.data.push(newUser);
+    this.updatedData.push(newUser);
+
+    // TODO write the object to the file
+    const filePath = this.databasePath;
+    try{
+      const readStream = fs.createReadStream(filePath);
+      const writeStream = fs.createWriteStream("./data/User2.json");
+    
+      // const updateStream = ;
+    
+      readStream
+      .pipe(
+        new Transform({
+          transform(chunk, encoding, callback) {
+            let cData = JSON.parse(chunk);
+            console.log("CData : ");
+            cData.data.forEach((d)=> {console.log(JSON.stringify(d))})
+            cData.data.push(newUser);
+            console.log(">>>>> chunk : ",chunk.toString());
+            // this.push(JSON.stringify(data));
+            callback(null, JSON.stringify(cData));
+          },
+        })
+      )
+      .pipe(writeStream);
+      return this._handleData(null, newUser);
+    }
+    catch(error){
+      return this._handleData(error, null);
+    }
+    
   }
 
   _generateId(){
@@ -69,6 +98,30 @@ class HypeData{
 
   _uuidValidateV4(_uuid) {
       return uuidValidate(_uuid) && uuidVersion(_uuid)===4;
+  }
+
+  _createAddStream(_obj){
+    
+    return transform;
+  }
+
+  _createUpdateStream(_id, _field, _value){
+    const transform = new Transform({
+      transform(chunk, encoding, callback){
+        let fileData = JSON.parse(chunk);
+        fileData.data = fileData.data.map((_doc, _index) => {
+          if(_doc._id===_id){
+            _doc = {..._doc, _field : _value};
+          }
+          return _doc;
+        });
+
+        this.push(JSON.stringify(fileData));
+        callback();
+      }
+    })
+
+    return transform;
   }
 
   _readDataFromFileSync(){

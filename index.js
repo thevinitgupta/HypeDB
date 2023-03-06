@@ -10,7 +10,12 @@ app.use(express.json())
 
 app.param('db', (req, res, next, name) => {
     const db = new HypeData(name);
-    res.json(db.get("_id","c41d332a-50d3-4b1c-ad62-1faa207eeff9"));
+    db.getAll();
+    res.json(db.create({
+        "name" : "Vimal Gupta",
+        "age" : 27,
+        "email" : "vamp.vim95@gmail.com"
+    }));
     next();
 });
 
