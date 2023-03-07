@@ -29,8 +29,8 @@ class HypeData{
     return this._handleData(null,this.data);
   }
 
-  get(_key, _value = null){
-    if(!_key){
+  get(_field, _value = null){
+    if(!_field){
       return this._handleData({
         code : 400,
         message : "Key not found"
@@ -42,17 +42,18 @@ class HypeData{
         message : "Value not found"
       }, null);
     }
-    if(_key==="_id" && !this._uuidValidateV4(_value)){
+    if(_field==="_id" && !this._uuidValidateV4(_value)){
       return this._handleData({
         code : 400,
-        message : "Invalid Key"
+        message : "Invalid ID"
       })
     }
     if(_value===""){
-      return this.get();
+      console.log("empty value")
+      return this.getAll();
     }
 
-    return this._handleData(null,this._searchByField(_key, _value));
+    return this._handleData(null,this._searchByField(_field, _value));
   }
 
   create(_object){
@@ -62,7 +63,7 @@ class HypeData{
     this.data.push(_object);
     this.updatedData.push(_object);
 
-    // TODO write the object to the file
+    //* write the object to the file
     const filePath = this.databasePath;
     try{
       const readStream = fs.createReadStream(filePath);
@@ -75,7 +76,7 @@ class HypeData{
           transform(chunk, encoding, callback) {
             let cData = JSON.parse(chunk);
             cData.data.push(_object);
-            console.log(">>>>> chunk : ",chunk.toString());
+            // console.log(">>>>> chunk : ",chunk.toString());
             callback(null, JSON.stringify(cData));
           },
         })
@@ -96,6 +97,80 @@ class HypeData{
     
   }
 
+  update(_id, _field, _value){
+    if(!this._uuidValidateV4(_id)){
+      return this._handleData({
+        code : 400,
+        message : "Invalid ID"
+      })
+    }
+    if(!_field){
+      return this._handleData({
+        code : 400,
+        message : "Key not found"
+      }, null);
+    }
+    if(!_value || _value===[]){
+      return this._handleData({
+        code : 400,
+        message : "Value not found"
+      }, null);
+    }
+
+    let updatedDoc = {};
+
+    for (let i = 0; i < this.data.length; i++) {
+      const obj = this.data[i];
+      if (obj._id === _id) {
+        this.updatedData[i] = {
+          ...obj,
+          [_field] : _value
+        };
+        updatedDoc = this.updatedData[i];
+        break;
+      }
+    }
+
+    const readStream = fs.createReadStream(this.databasePath);
+    const tmpFile = tmp.fileSync({'postfix' : '.json'});
+    const writeStream = fs.createWriteStream(tmpFile.name);
+    const filePath = this.databasePath;
+
+    try{
+      readStream.pipe(
+        new Transform({
+          transform(chunk, encoding, callback){
+            let fileData = JSON.parse(chunk);
+            fileData.data = fileData.data.map((_doc, _index) => {
+              let updatedDoc = _doc;
+              if(_doc._id===_id){
+                updatedDoc = {..._doc,[ _field] : _value};
+              }
+              return updatedDoc;
+            });
+    
+            callback(null,JSON.stringify(fileData));
+          }
+        })
+      ).pipe(writeStream).on('finish', () =>{
+        return fs.copyFile(tmpFile.name, filePath, (err) =>{
+          if(err) {
+            throw err;
+          }
+        })
+      });
+      this.data = this.updatedData;
+    }
+    catch(error){
+      // undo the changes in the local copy
+      this.updatedData = this.data;
+      return this._handleData(error, null);
+    }
+
+    return this._handleData(null, updatedDoc);
+    
+  }
+
   _generateId(){
       return uuidv4();
   }
@@ -105,22 +180,7 @@ class HypeData{
   }
 
   _createUpdateStream(_id, _field, _value){
-    const transform = new Transform({
-      transform(chunk, encoding, callback){
-        let fileData = JSON.parse(chunk);
-        fileData.data = fileData.data.map((_doc, _index) => {
-          if(_doc._id===_id){
-            _doc = {..._doc, _field : _value};
-          }
-          return _doc;
-        });
-
-        this.push(JSON.stringify(fileData));
-        callback();
-      }
-    })
-
-    return transform;
+    
   }
 
   _readDataFromFileSync(){
@@ -154,7 +214,7 @@ class HypeData{
   _searchByField(_field, _value){
     let searchData = [];
     this.data.forEach((item) =>{
-      if(item[_field] && (_value!=null || item[_field]===_value)){
+      if(item[_field] && (_value!=null && item[_field]===_value)){
         searchData.push(item);
       }
     });
