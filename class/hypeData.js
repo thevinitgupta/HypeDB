@@ -171,16 +171,41 @@ class HypeData{
     
   }
 
+  deleteAll(){
+
+  }
+
+  delete(_field, _value){
+    if(!_field){
+      return this._handleData({
+        code : 400,
+        message : "Provide field to search"
+      }, null);
+    }
+    if(!_value){
+      return this._handleData({
+        code : 400,
+        message : "Provide value to match"
+      }, null);
+    }
+    if(_field==="_id" && !this._uuidValidateV4(_value)){
+      return this._handleData({
+        code : 400,
+        message : "Invalid ID provided"
+      })
+    }
+    if(_value===""){
+      console.log("empty value to delete")
+      
+    }
+  }
+
   _generateId(){
       return uuidv4();
   }
 
   _uuidValidateV4(_uuid) {
       return uuidValidate(_uuid) && uuidVersion(_uuid)===4;
-  }
-
-  _createUpdateStream(_id, _field, _value){
-    
   }
 
   _readDataFromFileSync(){
@@ -209,6 +234,48 @@ class HypeData{
         resolve(parsedData.data);
       })
     })
+  }
+
+  _deleteData(_field=null, _value=null){
+    const readStream = fs.createReadStream(this.databasePath);
+    const tmpFile = tmp.fileSync({"postfix" : ".json"});
+    const writeStream = fs.createWriteStream(tmpFile.name);
+    const filePath = this.databasePath;
+
+    readStream.pipe(
+      new Transform({
+        transform(chunk,encoding,callback){
+          const fileData = JSON.parse(chunk);
+          fileData.data = this._filterByField(fileData.data, _field, _value);
+          this.updatedData = fileData.data;
+          callback(null, fileData);
+        }
+      })
+    ).pipe(writeStream)
+    .on('finish', () =>{
+      try{
+        fs.copyFile(tmpFile.name, filePath, (err)=>{
+          if(err){
+            throw err;
+          }
+        })
+        this.data = this.updatedData;
+      }
+      catch(error){
+        this.updatedData = this.data;
+        return this._handleData(error, null);
+      }
+    });
+    return this._handleData(null, []);
+  }
+
+  _filterByField(_data,_field=null, _value=null){
+    _data.filter((doc) =>{
+      if(_field==null || _value==null) return -1;
+      else if(doc[_field]!=undefined && doc[_field]==_value) return -1;
+      return 1;
+    })
+    return _data;
   }
 
   _searchByField(_field, _value){
