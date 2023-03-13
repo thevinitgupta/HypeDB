@@ -1,8 +1,9 @@
 {
   "name": "hypedb",
   "version": "1.0.0",
-  "description": "NoSQL database solution",
+  "description": "NoSQL, secure database solution",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -1,9 +1,9 @@
-const fs = require("fs");
-const {v4 : uuidv4, version : uuidVersion , validate : uuidValidate } = require("uuid")
-const {Transform} = require("stream");
-const tmp = require("tmp")
-class HypeData{ 
-  constructor(_dbName){
+import fs from "fs";
+import  {v4 as uuidv4, version as uuidVersion , validate as uuidValidate } from "uuid"
+import {Transform} from "stream";
+import tmp from "tmp"
+export default class HypeData{ 
+  constructor(_dbName,_schema = {}){
       this.databaseName = _dbName;
       this.databasePath = `./data/${this.databaseName}.json`;
       this.data = [];
@@ -11,7 +11,7 @@ class HypeData{
       try{
           //create an empty file
           if(fs.existsSync(this.databasePath)==false){
-              fs.writeFileSync(this.databasePath,JSON.stringify({}), {flag : 'wx'});
+              this.createCollection(this.databasePath, _schema);
           }
 
           else{
@@ -23,6 +23,13 @@ class HypeData{
       catch(error){
           return this._handleData(error, null);
       }
+  }
+
+  createCollection(_path, schema){
+      fs.writeFileSync(this.databasePath,JSON.stringify({
+        schema,
+        data : []
+      }), {flag : 'wx'});
   }
   
   getAll(){
@@ -172,7 +179,7 @@ class HypeData{
   }
 
   deleteAll(){
-
+    return this._deleteData();
   }
 
   delete(_field, _value){
@@ -182,7 +189,7 @@ class HypeData{
         message : "Provide field to search"
       }, null);
     }
-    if(!_value){
+    if(_field && !_value){
       return this._handleData({
         code : 400,
         message : "Provide value to match"
@@ -195,9 +202,10 @@ class HypeData{
       })
     }
     if(_value===""){
-      console.log("empty value to delete")
-      
+      return this._deleteData();
     }
+
+    return this._deleteData(_field, _value);
   }
 
   _generateId(){
@@ -241,41 +249,41 @@ class HypeData{
     const tmpFile = tmp.fileSync({"postfix" : ".json"});
     const writeStream = fs.createWriteStream(tmpFile.name);
     const filePath = this.databasePath;
+    const global = this;
 
-    readStream.pipe(
+    try{
+      readStream.pipe(
       new Transform({
         transform(chunk,encoding,callback){
           const fileData = JSON.parse(chunk);
-          fileData.data = this._filterByField(fileData.data, _field, _value);
+          fileData.data = global._filterByField(fileData.data, _field, _value);
           this.updatedData = fileData.data;
-          callback(null, fileData);
+          callback(null, JSON.stringify(fileData));
         }
       })
-    ).pipe(writeStream)
-    .on('finish', () =>{
-      try{
-        fs.copyFile(tmpFile.name, filePath, (err)=>{
-          if(err){
-            throw err;
-          }
-        })
-        this.data = this.updatedData;
-      }
-      catch(error){
-        this.updatedData = this.data;
-        return this._handleData(error, null);
-      }
-    });
+      ).pipe(writeStream)
+      .on('finish', () =>{
+          fs.copyFile(tmpFile.name, filePath, (err)=>{
+            if(err){
+              throw err;
+            }
+          })
+          this.data = this.updatedData;
+      });
+    }
+    catch(error){
+      this.updatedData = this.data;
+      return this._handleData(error, null);
+    }
     return this._handleData(null, []);
   }
 
   _filterByField(_data,_field=null, _value=null){
-    _data.filter((doc) =>{
-      if(_field==null || _value==null) return -1;
-      else if(doc[_field]!=undefined && doc[_field]==_value) return -1;
-      return 1;
+    return _data.filter((doc) =>{
+      if(_field==null || _value==null) return false;
+      else if(doc[_field]!=undefined && doc[_field]==_value) return false;
+      else return true;
     })
-    return _data;
   }
 
   _searchByField(_field, _value){
@@ -304,5 +312,3 @@ class HypeData{
     }
   }
 }
-
-module.exports = HypeData;
