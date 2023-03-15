@@ -2,55 +2,42 @@ import fs from "fs";
 import  {v4 as uuidv4, version as uuidVersion , validate as uuidValidate } from "uuid"
 import {Transform} from "stream";
 import tmp from "tmp"
-export default class HypeData{ 
-  constructor(_dbName,_schema = {}){
-      this.databaseName = _dbName;
-      this.databasePath = `./data/${this.databaseName}.json`;
-      this.data = [];
-      this.updatedData = [];
-      try{
-          //create an empty file
-          if(fs.existsSync(this.databasePath)==false){
-              this.createCollection(this.databasePath, _schema);
-          }
+class HypeData{ 
+  constructor(){}
 
-          else{
-            // database exists -> read the file
-            this._readDataFromFileSync();
-            console.log(this.data,"\n",this.updatedData);
-          }
+  createCollection(collection, schema){
+      this.databasePath = `./data/${collection}.json`;
+      if(fs.existsSync(this.databasePath)===true){
+          throw new Error("Collection already exists");
       }
-      catch(error){
-          return this._handleData(error, null);
-      }
-  }
 
-  createCollection(_path, schema){
-      fs.writeFileSync(this.databasePath,JSON.stringify({
-        schema,
-        data : []
-      }), {flag : 'wx'});
+      else{
+        fs.writeFileSync(this.databasePath,JSON.stringify({
+          schema,
+          data : []
+        }), {flag : 'wx'});
+      }
   }
   
   getAll(){
-    return this._handleData(null,this.data);
+    return this.#handleData(null,this.data);
   }
 
   get(_field, _value = null){
     if(!_field){
-      return this._handleData({
+      return this.#handleData({
         code : 400,
         message : "Key not found"
       }, null);
     }
     if(!_value){
-      return this._handleData({
+      return this.#handleData({
         code : 400,
         message : "Value not found"
       }, null);
     }
-    if(_field==="_id" && !this._uuidValidateV4(_value)){
-      return this._handleData({
+    if(_field==="_id" && !this.#uuidValidateV4(_value)){
+      return this.#handleData({
         code : 400,
         message : "Invalid ID"
       })
@@ -60,11 +47,11 @@ export default class HypeData{
       return this.getAll();
     }
 
-    return this._handleData(null,this._searchByField(_field, _value));
+    return this.#handleData(null,this.#searchByField(_field, _value));
   }
 
   create(_object){
-    const _id = this._generateId();
+    const _id = this.#generateId();
     _object._id = _id;
 
     this.data.push(_object);
@@ -96,29 +83,29 @@ export default class HypeData{
           }
         })
       });
-      return this._handleData(null, _object); 
+      return _object; 
     }
     catch(error){
-      return this._handleData(error, null);
+      return error;
     }
     
   }
 
   update(_id, _field, _value){
-    if(!this._uuidValidateV4(_id)){
-      return this._handleData({
+    if(!this.#uuidValidateV4(_id)){
+      return this.#handleData({
         code : 400,
         message : "Invalid ID"
       })
     }
     if(!_field){
-      return this._handleData({
+      return this.#handleData({
         code : 400,
         message : "Key not found"
       }, null);
     }
     if(!_value || _value===[]){
-      return this._handleData({
+      return this.#handleData({
         code : 400,
         message : "Value not found"
       }, null);
@@ -171,52 +158,52 @@ export default class HypeData{
     catch(error){
       // undo the changes in the local copy
       this.updatedData = this.data;
-      return this._handleData(error, null);
+      return this.#handleData(error, null);
     }
 
-    return this._handleData(null, updatedDoc);
+    return this.#handleData(null, updatedDoc);
     
   }
 
   deleteAll(){
-    return this._deleteData();
+    return this.#deleteData();
   }
 
   delete(_field, _value){
     if(!_field){
-      return this._handleData({
+      return this.#handleData({
         code : 400,
         message : "Provide field to search"
       }, null);
     }
     if(_field && !_value){
-      return this._handleData({
+      return this.#handleData({
         code : 400,
         message : "Provide value to match"
       }, null);
     }
-    if(_field==="_id" && !this._uuidValidateV4(_value)){
-      return this._handleData({
+    if(_field==="_id" && !this.#uuidValidateV4(_value)){
+      return this.#handleData({
         code : 400,
         message : "Invalid ID provided"
       })
     }
     if(_value===""){
-      return this._deleteData();
+      return this.#deleteData();
     }
 
-    return this._deleteData(_field, _value);
+    return this.#deleteData(_field, _value);
   }
 
-  _generateId(){
+  #generateId(){
       return uuidv4();
   }
 
-  _uuidValidateV4(_uuid) {
+  #uuidValidateV4(_uuid) {
       return uuidValidate(_uuid) && uuidVersion(_uuid)===4;
   }
 
-  _readDataFromFileSync(){
+  #readDataFromFileSync(){
     this.data = JSON.parse(fs.readFileSync(this.databasePath,'utf8')).data;
     this.updatedData = this.data;
   }
@@ -224,8 +211,8 @@ export default class HypeData{
   /*
     Asynchronously read the data from the database using readStream
   */
-  _readDataFromFile(){
-    const _dbPath = this.databasePath;
+  readDataFromFile(collection){
+    const _dbPath = `./data/${collection}.json`;
     return new Promise((resolve, reject) => {
       const readStream = fs.createReadStream(_dbPath,'utf8');
       let fileData = '';
@@ -244,7 +231,7 @@ export default class HypeData{
     })
   }
 
-  _deleteData(_field=null, _value=null){
+  #deleteData(_field=null, _value=null){
     const readStream = fs.createReadStream(this.databasePath);
     const tmpFile = tmp.fileSync({"postfix" : ".json"});
     const writeStream = fs.createWriteStream(tmpFile.name);
@@ -256,7 +243,7 @@ export default class HypeData{
       new Transform({
         transform(chunk,encoding,callback){
           const fileData = JSON.parse(chunk);
-          fileData.data = global._filterByField(fileData.data, _field, _value);
+          fileData.data = global.#filterByField(fileData.data, _field, _value);
           this.updatedData = fileData.data;
           callback(null, JSON.stringify(fileData));
         }
@@ -273,12 +260,12 @@ export default class HypeData{
     }
     catch(error){
       this.updatedData = this.data;
-      return this._handleData(error, null);
+      return this.#handleData(error, null);
     }
-    return this._handleData(null, []);
+    return this.#handleData(null, []);
   }
 
-  _filterByField(_data,_field=null, _value=null){
+  #filterByField(_data,_field=null, _value=null){
     return _data.filter((doc) =>{
       if(_field==null || _value==null) return false;
       else if(doc[_field]!=undefined && doc[_field]==_value) return false;
@@ -286,7 +273,7 @@ export default class HypeData{
     })
   }
 
-  _searchByField(_field, _value){
+  #searchByField(_field, _value){
     let searchData = [];
     this.data.forEach((item) =>{
       if(item[_field] && (_value!=null && item[_field]===_value)){
@@ -296,7 +283,7 @@ export default class HypeData{
     return searchData;
   }
 
-  _handleData(error, data){
+  #handleData(error, data){
     if (error) {
         console.error(error);
         return {
@@ -312,3 +299,5 @@ export default class HypeData{
     }
   }
 }
+
+export default HypeData;

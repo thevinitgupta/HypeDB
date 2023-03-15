@@ -1,6 +1,6 @@
 import express from "express"
 const app = express();
-import HypeData from "./class/hypeData.js"
+import Hype from "./drivers/Hype.js";
 import dotenv from "dotenv"
 
 dotenv.config();
@@ -10,10 +10,21 @@ const PORT = process.env.NODE_PORT;
 app.use(express.json())
 
 app.param('db', (req, res, next, name) => {
-    const db = new HypeData(name);
+    const db = new Hype();
     
     // res.json(db.update("7206f80f-958c-4ec7-b76f-9b8ab171c5bd", "age", 28));
-    res.json(db.get("age", 28));
+    db.find("User",{
+        "age": {"$gt" : 21, "$lt" : 29}
+    }, (error, data) =>{
+        if(error) {
+            res.json({
+            message : error.message
+            })
+        }
+        else res.json({
+            data
+        })
+    })
     // res.json(db.create({
     //     "name" : "Vimal Gupta",
     //     "age" : 27,
