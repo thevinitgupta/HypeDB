@@ -83,17 +83,34 @@ class Hype{
         }
         return isMatch;
     }
-
+    /**
+     * 
+     * @param {array} data 
+     * @param {object} options 
+     * @returns array
+     * {sort : {age : 1}, {name : -1}}
+     */
     #handleOptions(data,options){
         if(Object.keys(options).length===0) return data;
+        console.log(options["sort"]!==undefined)
+        if(options["sort"]!==undefined && typeof options["sort"]=='object'){
+            let option = options["sort"];
 
-        if(options.sort){
-
+            for(const key in option){
+                let order = option[key];
+                data.sort((docA,docB) => {
+                    if(order>0) return docA[key]-docB[key] || docA[key].localeCompare(docB[key]);
+                    else if(order<0) return docB[key]-docA[key]  || docB[key].localeCompare(docA[key]);
+                    else return 0;
+                });
+            }
+            
         }
 
-        if(options.limit){
-
+        if(options["limit"]!==undefined && typeof options["limit"]==='number'){
+            data = data.slice(0,options["limit"]);
         }
+        return data;
     }
 }
 
