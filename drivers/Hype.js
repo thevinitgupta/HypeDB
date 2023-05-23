@@ -88,22 +88,29 @@ class Hype{
      * @param {array} data 
      * @param {object} options 
      * @returns array
-     * {sort : {age : 1}, {name : -1}}
+     * {sort: {age : 1, name : -1}}
      */
     #handleOptions(data,options){
         if(Object.keys(options).length===0) return data;
-        console.log(options["sort"]!==undefined)
+        console.log((typeof options["sort"])=='object')
         if(options["sort"]!==undefined && typeof options["sort"]=='object'){
-            let option = options["sort"];
+            let sortingOptions = options["sort"];
 
-            for(const key in option){
-                let order = option[key];
-                data.sort((docA,docB) => {
-                    if(order>0) return docA[key]-docB[key] || docA[key].localeCompare(docB[key]);
-                    else if(order<0) return docB[key]-docA[key]  || docB[key].localeCompare(docA[key]);
-                    else return 0;
-                });
-            }
+            const comparator = (a, b) => {
+                for (const property of Object.keys(sortingOptions)) {
+                    const direction = sortingOptions[property];
+                    const valueA = a[property];
+                    const valueB = b[property];
+                    if (valueA < valueB) {
+                        return direction === 1 ? -1 : 1;
+                    } else if (valueA > valueB) {
+                        return direction === 1 ? 1 : -1;
+                    }
+                }
+                return 0;
+              };
+            
+              data.sort(comparator);
             
         }
 

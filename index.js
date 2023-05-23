@@ -15,7 +15,7 @@ app.param('db', (req, res, next, name) => {
     // res.json(db.update("7206f80f-958c-4ec7-b76f-9b8ab171c5bd", "age", 28));
     db.find("User",{
        
-    }, {"sort" : {"name": -1, "email": -1}}, (error, data) =>{
+    }, {"sort" : {"name": 1, "email": -1}}, (error, data) =>{
         if(error) {
             res.json({
             message : error.message
